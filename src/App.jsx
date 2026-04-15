@@ -20,10 +20,7 @@ function distance(a, b) {
 }
 
 function average(points) {
-  const sum = points.reduce(
-    (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
-    { x: 0, y: 0 }
-  );
+  const sum = points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
   return { x: sum.x / points.length, y: sum.y / points.length };
 }
 
@@ -133,7 +130,6 @@ export default function App() {
   const [tracking, setTracking] = useState(false);
   const [recording, setRecording] = useState(false);
   const [replaying, setReplaying] = useState(false);
-  const [presentationMode, setPresentationMode] = useState(false);
   const [error, setError] = useState('');
   const [passage, setPassage] = useState(DEFAULT_PASSAGE);
   const [session, setSession] = useState([]);
@@ -146,6 +142,7 @@ export default function App() {
 
   const lines = useMemo(() => splitIntoLines(passage), [passage]);
   const replayPoint = session[Math.min(playhead, Math.max(session.length - 1, 0))] || null;
+  const point = replaying ? replayPoint : livePoint;
   const canRecord = calibrationStep >= CALIBRATION_POINTS.length && tracking;
 
   useEffect(() => {
@@ -329,7 +326,7 @@ export default function App() {
               Math.max(lines.length - 1, 0)
             );
 
-            const point = {
+            const nextPoint = {
               t: now,
               x: smoothX,
               y: smoothY,
@@ -339,10 +336,10 @@ export default function App() {
               blinkish: features.openness < 0.09,
             };
 
-            setLivePoint(point);
+            setLivePoint(nextPoint);
 
-            if (recording && !point.blinkish) {
-              setSession((prev) => [...prev, point]);
+            if (recording && !nextPoint.blinkish) {
+              setSession((prev) => [...prev, nextPoint]);
             }
 
             if (calibrationStep < CALIBRATION_POINTS.length) {
@@ -372,37 +369,22 @@ export default function App() {
     if (!livePoint || calibrationStep >= CALIBRATION_POINTS.length) return;
 
     const target = CALIBRATION_POINTS[calibrationStep];
+    const newSample = {
+      targetX: target.x,
+      targetY: target.y,
+      inputX: livePoint.x,
+      inputY: livePoint.y,
+    };
 
-    setCalibrationSamples((prev) => [
-      ...prev,
-      {
-        targetX: target.x,
-        targetY: target.y,
-        inputX: livePoint.x,
-        inputY: livePoint.y,
-      },
-    ]);
+    const nextSamples = [...calibrationSamples, newSample];
+    setCalibrationSamples(nextSamples);
 
     const next = calibrationStep + 1;
     setCalibrationStep(next);
 
     if (next >= CALIBRATION_POINTS.length) {
-      const samples = [
-        ...calibrationSamples,
-        {
-          targetX: target.x,
-          targetY: target.y,
-          inputX: livePoint.x,
-          inputY: livePoint.y,
-        },
-      ];
-
-      const xMap = fitLinearMap(
-        samples.map((s) => ({ input: s.inputX, output: s.targetX }))
-      );
-      const yMap = fitLinearMap(
-        samples.map((s) => ({ input: s.inputY, output: s.targetY }))
-      );
+      const xMap = fitLinearMap(nextSamples.map((s) => ({ input: s.inputX, output: s.targetX })));
+      const yMap = fitLinearMap(nextSamples.map((s) => ({ input: s.inputY, output: s.targetY })));
 
       setMaps({ x: xMap, y: yMap });
       setStatus('Calibration complete. You can record.');
@@ -472,29 +454,12 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  const point = replaying ? replayPoint : livePoint;
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#f8fafc',
-        padding: '20px',
-        color: BRAND.ink,
-        fontFamily: 'Arial, sans-serif',
-      }}
-    >
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: 20, fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 12 }}>Reading Eye Tracking</h1>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
-            marginBottom: 16,
-          }}
-        >
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
           <button onClick={cameraOn ? stopCamera : startCamera}>
             {cameraOn ? 'Stop Camera' : 'Start Camera'}
           </button>
@@ -514,9 +479,6 @@ export default function App() {
           <button onClick={() => setReplaying((v) => !v)} disabled={session.length === 0}>
             {replaying ? 'Pause Replay' : 'Replay Session'}
           </button>
-          <button onClick={() => setPresentationMode((v) => !v)}>
-            {presentationMode ? 'Exit Presentation Mode' : 'Presentation Mode'}
-          </button>
           <button onClick={exportSession} disabled={session.length === 0}>
             Export Session
           </button>
@@ -526,130 +488,80 @@ export default function App() {
           </label>
         </div>
 
-        <div
-          style={{
-            background: BRAND.soft,
-            padding: 12,
-            borderRadius: 12,
-            marginBottom: 16,
-            color: BRAND.muted,
-          }}
-        >
+        <div style={{ background: '#f5f3ff', padding: 12, borderRadius: 12, marginBottom: 16, color: '#6b7280' }}>
           {status}
         </div>
 
         {error ? (
-          <div
-            style={{
-              background: '#fee2e2',
-              color: '#991b1b',
-              padding: 12,
-              borderRadius: 12,
-              marginBottom: 16,
-            }}
-          >
+          <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 12, marginBottom: 16 }}>
             {error}
           </div>
         ) : null}
 
-        {!presentationMode && (
-          <>
-            <div
-              style={{
-                background: 'white',
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 18,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
-              }}
-            >
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
-                Reading Passage
-              </label>
-              <textarea
-                value={passage}
-                onChange={(e) => setPassage(e.target.value)}
-                rows={5}
-                style={{
-                  width: '100%',
-                  borderRadius: 12,
-                  border: '1px solid #d1d5db',
-                  padding: 12,
-                  fontSize: 16,
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                background: 'white',
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 18,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
-              }}
-            >
-              <div style={{ position: 'relative', maxWidth: 640, margin: '0 auto' }}>
-                <video
-                  ref={videoRef}
-                  playsInline
-                  muted
-                  style={{
-                    width: '100%',
-                    borderRadius: 16,
-                    background: 'black',
-                    display: 'block',
-                  }}
-                />
-                <canvas
-                  ref={overlayRef}
-                  width={1280}
-                  height={720}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: 16,
-                  }}
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        <div
-          style={{
-            background: presentationMode ? '#fff7ed' : '#ffffff',
-            borderRadius: 20,
-            padding: presentationMode ? 30 : 24,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
-          }}
-        >
-          <div
+        <div style={{ background: 'white', borderRadius: 16, padding: 16, marginBottom: 18, boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
+            Reading Passage
+          </label>
+          <textarea
+            value={passage}
+            onChange={(e) => setPassage(e.target.value)}
+            rows={5}
             style={{
-              marginBottom: 14,
-              fontWeight: 600,
-              fontSize: presentationMode ? 24 : 18,
-              textAlign: 'center',
+              width: '100%',
+              borderRadius: 12,
+              border: '1px solid #d1d5db',
+              padding: 12,
+              fontSize: 16,
             }}
-          >
-            {presentationMode ? 'Parent Presentation Replay' : 'Child Reading View'}
+          />
+        </div>
+
+        <div style={{ background: 'white', borderRadius: 16, padding: 16, marginBottom: 18, boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+          <div style={{ position: 'relative', maxWidth: 640, margin: '0 auto' }}>
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              style={{
+                width: '100%',
+                borderRadius: 16,
+                background: 'black',
+                display: 'block',
+              }}
+            />
+            <canvas
+              ref={overlayRef}
+              width={1280}
+              height={720}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                borderRadius: 16,
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ background: '#ffffff', borderRadius: 20, padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+          <div style={{ marginBottom: 14, fontWeight: 600, fontSize: 18, textAlign: 'center' }}>
+            Child Reading View
           </div>
 
           <div
             ref={textBoxRef}
             style={{
               position: 'relative',
-              minHeight: presentationMode ? 560 : 520,
-              maxWidth: presentationMode ? 1000 : 900,
+              minHeight: 520,
+              maxWidth: 900,
               margin: '0 auto',
               background: '#fef3c7',
               borderRadius: 20,
-              padding: presentationMode ? 36 : 30,
+              padding: 30,
               fontFamily: 'Georgia, serif',
-              fontSize: presentationMode ? 42 : 34,
-              lineHeight: presentationMode ? '60px' : '52px',
+              fontSize: 34,
+              lineHeight: '52px',
             }}
           >
             {lines.map((line, idx) => {
@@ -676,8 +588,8 @@ export default function App() {
                   left: `${point.x * 100}%`,
                   top: `${point.y * 100}%`,
                   transform: 'translate(-50%, -50%)',
-                  width: presentationMode ? 24 : 20,
-                  height: presentationMode ? 24 : 20,
+                  width: 20,
+                  height: 20,
                   borderRadius: '999px',
                   background: '#3b82f6',
                   border: '2px solid white',
