@@ -491,6 +491,7 @@ export default function App() {
        <div style={{ background: '#f5f3ff', padding: 12, borderRadius: 12, marginBottom: 16, color: '#6b7280' }}>
   <div>Status: {status}</div>
   <div>Tracking: {tracking ? 'ON' : 'OFF'}</div>
+  <div>Face Detected: {faceDetected ? 'YES' : 'NO'}</div>
   <div>Live Point: {livePoint ? `${livePoint.x.toFixed(2)}, ${livePoint.y.toFixed(2)}` : 'NONE'}</div>
 </div>
 
