@@ -305,8 +305,8 @@ export default function App() {
             const rawEstimateX = clamp(features.rawX + features.faceX * 0.15, 0, 1);
 const rawEstimateY = clamp(features.rawY + features.faceY * 0.15, 0, 1);
 
-const mappedX = clamp(features.rawX + features.faceX * 0.15, 0, 1);
-const mappedY = clamp(features.rawY + features.faceY * 0.15, 0, 1);
+const mappedX = clamp(features.rawX, 0, 1);
+const mappedY = clamp(features.rawY, 0, 1);
 
             smoothX = lerp(smoothX, mappedX, 0.22);
             smoothY = lerp(smoothY, mappedY, 0.22);
