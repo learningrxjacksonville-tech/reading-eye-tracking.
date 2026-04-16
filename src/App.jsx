@@ -312,24 +312,32 @@ const mappedY = clamp(features.rawY, 0, 1);
             smoothY = lerp(smoothY, mappedY, 0.22);
 
             const textRect = textBoxRef.current?.getBoundingClientRect();
-            const xPx = textRect ? smoothX * textRect.width : 0;
-            const yPx = textRect ? smoothY * textRect.height : 0;
-            const lineHeight = textRect ? textRect.height / Math.max(lines.length, 1) : 1;
-            const lineIndex = clamp(
-              Math.floor(yPx / lineHeight),
-              0,
-              Math.max(lines.length - 1, 0)
-            );
+const lineHeight = textRect ? textRect.height / Math.max(lines.length, 1) : 1;
 
-            const nextPoint = {
-              t: now,
-              x: smoothX,
-              y: smoothY,
-              xPx,
-              yPx,
-              lineIndex,
-              blinkish: features.openness < 0.09,
-            };
+// Free horizontal movement
+const xPx = textRect ? smoothX * textRect.width : 0;
+
+// Estimate which line the eyes are closest to
+const rawYPx = textRect ? smoothY * textRect.height : 0;
+const lineIndex = clamp(
+  Math.round(rawYPx / lineHeight),
+  0,
+  Math.max(lines.length - 1, 0)
+);
+
+// Snap Y to the center of that line
+const snappedYPx = lineIndex * lineHeight + lineHeight / 2;
+const snappedY = textRect ? snappedYPx / textRect.height : smoothY;
+
+const nextPoint = {
+  t: now,
+  x: smoothX,
+  y: snappedY,
+  xPx,
+  yPx: snappedYPx,
+  lineIndex,
+  blinkish: features.openness < 0.09,
+};
 
             setLivePoint(nextPoint);
 
