@@ -139,7 +139,7 @@ export default function App() {
   const [calibrationSamples, setCalibrationSamples] = useState([]);
   const [maps, setMaps] = useState(null);
   const [status, setStatus] = useState('Load camera and calibrate.');
-
+  const [faceDetected, setFaceDetected] = useState(false);
   const lines = useMemo(() => splitIntoLines(passage), [passage]);
   const replayPoint = session[Math.min(playhead, Math.max(session.length - 1, 0))] || null;
   const point = replaying ? replayPoint : livePoint;
@@ -297,7 +297,7 @@ export default function App() {
 
         const result = landmarker.detectForVideo(video, now);
         const face = result?.faceLandmarks?.[0];
-
+        setFaceDetected(!!face);
         if (face) {
           const features = getEyeFeatures(face);
 
