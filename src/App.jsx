@@ -302,16 +302,20 @@ export default function App() {
           const features = getEyeFeatures(face);
 
           if (features) {
-            const mappedX = clamp(
-              applyLinearMap(features.rawX + features.faceX * 0.15, maps?.x, 0.5),
-              0,
-              1
-            );
-            const mappedY = clamp(
-              applyLinearMap(features.rawY + features.faceY * 0.15, maps?.y, 0.5),
-              0,
-              1
-            );
+            const rawEstimateX = clamp(features.rawX + features.faceX * 0.15, 0, 1);
+const rawEstimateY = clamp(features.rawY + features.faceY * 0.15, 0, 1);
+
+const mappedX = clamp(
+  maps?.x ? applyLinearMap(rawEstimateX, maps.x, rawEstimateX) : rawEstimateX,
+  0,
+  1
+);
+
+const mappedY = clamp(
+  maps?.y ? applyLinearMap(rawEstimateY, maps.y, rawEstimateY) : rawEstimateY,
+  0,
+  1
+);
 
             smoothX = lerp(smoothX, mappedX, 0.22);
             smoothY = lerp(smoothY, mappedY, 0.22);
